@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dünya Radyoları Oynatıcısı - Gelişmiş</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --bg-light: #f4f7f6;
+            --text-dark: #333;
+            --border-color: #ddd;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 100px; /* Player için alt boşluk */
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--secondary-color);
+        }
+
+        .search-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap; /* Küçük ekranlarda alt alta gelmesi için */
+        }
+
+        input[type="text"], select {
+            padding: 12px;
+            width: 200px; /* Genişlik ayarlandı */
+            border: 2px solid var(--border-color);
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            background-color: white; /* Seçim kutuları için de arka plan */
+            -webkit-appearance: none; /* iOS'ta varsayılan görünümü kaldırmak için */
+            -moz-appearance: none; /* Firefox'ta varsayılan görünümü kaldırmak için */
+            appearance: none; /* Varsayılan görünümü kaldırmak için */
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%233498db" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); /* Özel ok simgesi */
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+        
+        input[type="text"] {
+            width: 250px; /* Arama kutusu biraz daha geniş */
+        }
+
+        input[type="text"]:focus, select:focus {
+            border-color: var(--primary-color);
+        }
+
+        button {
+            padding: 12px 24px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        /* Sonuç Alanı ve Kartlar */
+        #results-area {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .station-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .station-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .station-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            color: var(--secondary-color);
+        }
+
+        .station-details {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .station-details img {
+            max-width: 20px;
+            height: auto;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+
+        /* Sabit Alt Oynatıcı */
+        .fixed-player {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: var(--secondary-color);
+            color: white;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        #current-station-info {
+            margin-left: 20px;
+            font-weight: bold;
+            flex-grow: 1; /* Metnin daha fazla yer kaplaması için */
+            white-space: nowrap; /* Metni tek satırda tut */
+            overflow: hidden; /* Taşmayı gizle */
+            text-overflow: ellipsis; /* Taşma durumunda üç nokta göster */
+        }
+
+        audio {
+            width: 60%;
+            min-width: 250px; /* Mobil uyumluluk için */
+            margin-right: 20px;
+            outline: none;
+        }
+        
+        .loading, .error {
+            text-align: center;
+            font-size: 1.2em;
+            margin-top: 20px;
+            width: 100%; /* Merkezleme için */
+        }
+        .error { color: #e74c3c; }
+
+        /* Küçük ekranlar için düzenlemeler */
+        @media (max-width: 768px) {
+            .search-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            input[type="text"], select, button {
+                width: 80%; /* Daha dar ekranlarda daha geniş */
+                max-width: 350px;
+            }
+            .fixed-player {
+                flex-direction: column;
+                padding: 10px;
+            }
+            #current-station-info {
+                margin-left: 0;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+            audio {
+                width: 90%;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Dünya Radyo Gezgini</h1>
+        <p>İstasyon adı, ülke veya kategoriye göre arama yapın.</p>
+    </header>
+
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="İstasyon adı (opsiyonel)">
+        <select id="country-select">
+            <option value="">Tüm Ülkeler</option>
+            </select>
+        <select id="category-select">
+            <option value="">Tüm Kategoriler</option>
+            </select>
+        <button onclick="searchStations()">Ara</button>
+    </div>
+
+    <div id="results-area">
+        <p style="text-align: center; width: 100%;">Arama yapmak için yukarıdaki seçenekleri kullanın.</p>
+    </div>
+
+    <div class="fixed-player">
+        <div id="current-station-info">Bir istasyon seçin...</div>
+        <audio id="radio-player" controls autoplay>
+            Tarayıcınız audio elementini desteklemiyor.
+        </audio>
+    </div>
+
+
+    <script>
+        const resultsArea = document.getElementById('results-area');
+        const audioPlayer = document.getElementById('radio-player');
+        const currentStationInfo = document.getElementById('current-station-info');
+        const searchInput = document.getElementById('search-input');
+        const countrySelect = document.getElementById('country-select');
+        const categorySelect = document.getElementById('category-select');
+
+        // Sayfa yüklendiğinde ülke ve kategori listelerini doldur
+        document.addEventListener('DOMContentLoaded', () => {
+            populateCountrySelect();
+            populateCategorySelect();
+        });
+
+        // Enter tuşu ile arama yapabilmek için
+        searchInput.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                searchStations();
+            }
+        });
+
+        // API Hatası durumunda oynatıcıyı bilgilendir
+        audioPlayer.onerror = function() {
+            currentStationInfo.textContent = "Hata: Bu yayın şu anda açılamıyor veya çevrimdışı.";
+            currentStationInfo.style.color = "#e74c3c";
+        };
+
+        async function populateCountrySelect() {
+            try {
+                // Sadece geçerli, aktif radyo istasyonları olan ülkeleri getir
+                const response = await fetch('https://de1.api.radio-browser.info/json/countries');
+                if (!response.ok) throw new Error('Ülke listesi alınamadı.');
+                const countries = await response.json();
+
+                countries.sort((a, b) => a.name.localeCompare(b.name)); // Ülkeleri alfabetik sırala
+
+                countries.forEach(country => {
+                    if (country.stationcount > 0) { // En az bir istasyonu olan ülkeleri göster
+                        const option = document.createElement('option');
+                        option.value = country.name;
+                        option.textContent = `${country.name} (${country.stationcount})`;
+                        countrySelect.appendChild(option);
+                    }
+                });
+            } catch (error) {
+                console.error('Ülke listesi yüklenirken hata:', error);
+            }
+        }
+
+        async function populateCategorySelect() {
+            try {
+                // Sadece geçerli, aktif radyo istasyonları olan etiketleri (kategorileri) getir
+                const response = await fetch('https://de1.api.radio-browser.info/json/tags');
+                if (!response.ok) throw new Error('Kategori listesi alınamadı.');
+                const tags = await response.json();
+
+                // Etiketleri en çok kullanılanlardan en aza doğru sırala
+                tags.sort((a, b) => b.stationcount - a.stationcount); 
+
+                // İlk 100 etiketi al (çok fazla etiket olabilir) veya daha az isterseniz ayarlayın
+                tags.slice(0, 100).forEach(tag => { 
+                    if (tag.stationcount > 0 && tag.name.length > 1) { // Boş veya çok kısa etiketleri filtrele
+                        const option = document.createElement('option');
+                        option.value = tag.name;
+                        option.textContent = `${tag.name} (${tag.stationcount})`;
+                        categorySelect.appendChild(option);
+                    }
+                });
+            } catch (error) {
+                console.error('Kategori listesi yüklenirken hata:', error);
+            }
+        }
+
+        async function searchStations() {
+            const query = searchInput.value.trim();
+            const selectedCountry = countrySelect.value;
+            const selectedCategory = categorySelect.value;
+
+            // En az bir arama kriteri olmalı
+            if (query === "" && selectedCountry === "" && selectedCategory === "") {
+                alert("Lütfen bir arama terimi girin veya ülke/kategori seçin.");
+                return;
+            }
+
+            resultsArea.innerHTML = '<div class="loading">İstasyonlar aranıyor...</div>';
+            
+            // API isteği URL'sini oluştur
+            let apiUrl = 'https://de1.api.radio-browser.info/json/stations/search';
+            let params = [];
+
+            if (query) {
+                params.push(`name=${encodeURIComponent(query)}`);
+            }
+            if (selectedCountry) {
+                params.push(`country=${encodeURIComponent(selectedCountry)}`);
+            }
+            if (selectedCategory) {
+                params.push(`tag=${encodeURIComponent(selectedCategory)}`);
+            }
+
+            // Arama sonuçlarını popülerliğe göre (clickcount) tersten sırala
+            params.push(`order=clickcount`);
+            params.push(`reverse=true`);
+            params.push(`limit=50`); // Daha fazla sonuç getirebiliriz
+            params.push(`hidebroken=true`); // Çalışmayan istasyonları gizle
+
+            apiUrl += `?${params.join('&')}`;
+
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('Ağ hatası oluştu.');
+                const data = await response.json();
+                
+                displayResults(data);
+            } catch (error) {
+                resultsArea.innerHTML = `<div class="error">Bir hata oluştu: ${error.message}. Lütfen tekrar deneyin.</div>`;
+                console.error('API Hatası:', error);
+            }
+        }
+
+        function displayResults(stations) {
+            resultsArea.innerHTML = ''; // Önceki sonuçları temizle
+
+            if (stations.length === 0) {
+                resultsArea.innerHTML = '<p style="text-align: center; width: 100%;">Kriterlere uygun istasyon bulunamadı.</p>';
+                return;
+            }
+
+            stations.forEach(station => {
+                const card = document.createElement('div');
+                card.className = 'station-card';
+                
+                const name = station.name || 'Bilinmeyen İstasyon';
+                const country = station.country || 'Dünya';
+                const tags = station.tags ? station.tags.split(',').filter(tag => tag.trim() !== '').slice(0, 3).join(', ') : ''; // İlk 3 etiketi göster
+                const bitrate = station.bitrate ? `${station.bitrate} kbps` : '';
+                const favicon = station.favicon && station.favicon.startsWith('http') ? station.favicon : ''; // Güvenli favicon kontrolü
+
+                card.innerHTML = `
+                    <div>
+                        <div class="station-name">${favicon ? `<img src="${favicon}" alt="logo" loading="lazy"> ` : ''}${name}</div>
+                        <div class="station-details">📍 ${country}</div>
+                        ${tags ? `<div class="station-details">🏷️ ${tags}</div>` : ''}
+                    </div>
+                    <div class="station-details" style="text-align: right; margin-top: 10px;">
+                         🔊 ${bitrate}
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    playStream(station.url_resolved, name);
+                });
+
+                resultsArea.appendChild(card);
+            });
+        }
+
+        function playStream(url, name) {
+            currentStationInfo.style.color = "white";
+            currentStationInfo.textContent = `Çalınıyor: ${name} yükleniyor...`;
+            
+            audioPlayer.src = url;
+            
+            audioPlayer.onplaying = () => {
+                 currentStationInfo.textContent = `Çalınıyor: ${name}`;
+            };
+            
+            audioPlayer.play().catch(e => {
+                console.log("Otomatik oynatma engellendi veya hata oluştu:", e);
+                currentStationInfo.textContent = "Oynatmak için 'Play' tuşuna basın.";
+            });
+        }
+    </script>
+</body>
+</html>
