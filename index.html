@@ -105,12 +105,24 @@
             border-left: 5px solid var(--primary-color);
         }
 
-        .station-name {
-            font-weight: bold;
-            font-size: 1.1em;
-            margin-bottom: 10px;
-            color: var(--secondary-color);
-        }
+.station-name {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.station-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;   /* Resmi orantılı sığdırır */
+    border-radius: 8px;
+    background: #f2f2f2;   /* Boşluklarda beyaz alan oluşmaması için */
+    padding: 4px;
+}
+
 
         .station-details {
             font-size: 0.9em;
@@ -361,7 +373,7 @@
 
                 card.innerHTML = `
                     <div>
-                        <div class="station-name">${favicon ? `<img src="${favicon}" alt="logo" loading="lazy"> ` : ''}${name}</div>
+                        <div class="station-name">${favicon ? `<img src="${favicon}" class="station-logo" alt="logo" loading="lazy">` : ''}${name}</div>
                         <div class="station-details">📍 ${country}</div>
                         ${tags ? `<div class="station-details">🏷️ ${tags}</div>` : ''}
                     </div>
